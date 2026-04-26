@@ -1,6 +1,6 @@
 # golduck
 
-![CI](https://github.com/GOLDUCK_OWNER/golduck/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/pkmdev-sec/golduck/actions/workflows/ci.yml/badge.svg)
 ![License: MIT](https://img.shields.io/badge/license-MIT-green)
 ![Node: ≥20](https://img.shields.io/badge/node-%E2%89%A520-informational)
 
@@ -19,7 +19,7 @@ conversation loop with tools, verification, memory, and a polished TUI.
 ## Install — one line
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/GOLDUCK_OWNER/golduck/main/scripts/remote-install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/pkmdev-sec/golduck/main/scripts/remote-install.sh | bash
 ```
 
 Then:
@@ -32,7 +32,7 @@ golduck                             # interactive TUI
 Or clone and install manually:
 
 ```bash
-git clone https://github.com/GOLDUCK_OWNER/golduck.git
+git clone https://github.com/pkmdev-sec/golduck.git
 cd golduck
 ./install.sh
 ```

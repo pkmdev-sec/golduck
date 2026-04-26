@@ -5,7 +5,7 @@ Thanks for your interest! This doc tells you how to set up, what the ground rule
 ## Setup
 
 ```bash
-git clone https://github.com/YOUR-USER/golduck.git
+git clone https://github.com/pkmdev-sec/golduck.git
 cd golduck
 ./install.sh
 ```

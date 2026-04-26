@@ -3,20 +3,20 @@
 # golduck — remote one-line installer
 # ════════════════════════════════════════════════════════════════════════════
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/GOLDUCK_OWNER/golduck/main/scripts/remote-install.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/pkmdev-sec/golduck/main/scripts/remote-install.sh | bash
 #
 # What it does:
 #   1. Clones (or updates) github.com/<owner>/golduck under ~/.golduck/repo.
 #   2. Runs ./install.sh with the same env you invoked it with.
 #
 # Env overrides:
-#   GOLDUCK_OWNER=<user-or-org>   pick a fork owner (default: golduck-org)
+#   pkmdev-sec=<user-or-org>   pick a fork owner (default: golduck-org)
 #   GOLDUCK_BRANCH=<ref>          branch/tag/commit to check out (default: main)
 #   GOLDUCK_REPO_DIR=<path>       clone destination (default: ~/.golduck/repo)
 # ════════════════════════════════════════════════════════════════════════════
 set -eu
 
-OWNER="${GOLDUCK_OWNER:-golduck-org}"
+OWNER="${pkmdev-sec:-golduck-org}"
 BRANCH="${GOLDUCK_BRANCH:-main}"
 REPO_DIR="${GOLDUCK_REPO_DIR:-$HOME/.golduck/repo}"
 REMOTE="https://github.com/${OWNER}/golduck.git"
