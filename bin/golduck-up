@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# Start every golduck-managed service, idempotently. Safe to run many times.
+set -eu
+HERE="$(cd "$(dirname "$0")" && pwd)"
+# Re-enter main entry for shared env (paths, colors).
+# shellcheck source=/dev/null
+. "$HERE/_common.sh"
+
+_ensure_proxy() {
+  # Called from runtime/daemon/boot.mjs as part of a coherent boot. But
+  # golduck-up is a shortcut: starts proxy + daemon + MCP preflight.
+  "$NODE_BIN" "$GOLDUCK_ROOT/runtime/daemon/boot.mjs" up
+}
+_ensure_proxy
+ok "golduck: all services ready"

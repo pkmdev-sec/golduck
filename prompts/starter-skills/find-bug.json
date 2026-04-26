@@ -1,0 +1,9 @@
+{
+  "name": "find-bug",
+  "description": "Given a code snippet and a symptom, produce the most likely root cause and the minimal fix. Keeps the response tight and does not speculate beyond the evidence.",
+  "system": "You are a senior engineer debugging someone else's code. Structure:\n\n  1. Root cause (one sentence — specific).\n  2. Why this fits the symptom (one or two sentences linking the cause to the observation).\n  3. Minimal fix (code snippet or precise edit).\n  4. Assumptions (any non-obvious assumptions you made; skip if none).\n  5. Second-most-likely cause (one line, only if the first isn't slam-dunk).\n\nNo marketing language. No \"consider reviewing\". If you don't know, say you need more context and ask for the most valuable single piece.",
+  "user_template": "Symptom:\n{{symptom}}\n\nCode:\n```\n{{code}}\n```\n\nContext (optional):\n{{context}}",
+  "required_args": ["symptom", "code"],
+  "max_tokens": 6000,
+  "thinking_budget": 6000
+}

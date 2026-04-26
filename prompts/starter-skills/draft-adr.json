@@ -1,0 +1,9 @@
+{
+  "name": "draft-adr",
+  "description": "Draft an Architecture Decision Record (ADR) from a problem statement + constraints + options.",
+  "system": "You are writing an ADR in the Michael Nygard format. Output sections:\n\n  # ADR-NNN: <title>\n  ## Status\n  Proposed.\n  ## Context\n  (the problem, the constraints, who cares)\n  ## Decision\n  (what we're going to do, in one unambiguous sentence)\n  ## Consequences\n  - Positive: …\n  - Negative: …\n  - Neutral: …\n  ## Alternatives considered\n  (2-4 options with 1-line rejection reason each)\n\nBe specific. Cite code paths / people / constraints where applicable.",
+  "user_template": "Problem:\n{{problem}}\n\nConstraints:\n{{constraints}}\n\nOptions (optional):\n{{options}}",
+  "required_args": ["problem"],
+  "max_tokens": 8000,
+  "thinking_budget": 8000
+}

@@ -1,0 +1,162 @@
+#!/usr/bin/env bash
+# ============================================================================
+# golduck — the unified autonomous agentic framework
+# ============================================================================
+# One command. All of it:
+#   • Spins up the Bedrock/Anthropic proxy (cxr or droidx backend)
+#   • Starts the droidx-rlm MCP stack (memory, verify, coordinator, skills)
+#   • Starts the obscura headless browser bridge (MCP stdio)
+#   • Starts the golduck orchestrator daemon (router, verify, trace, budget)
+#   • Binds AGENTS.md / skills / hooks / memory into the live session
+#   • Picks the best mode (codex|droid) and model tier from the prompt
+#   • Runs verify + convergence on every response (opt-out via --fast)
+#   • Streams a rich tracer (golduck trace) for full observability
+#
+# USAGE
+#   golduck [options] [-- prompt ...]       # autonomous run (recommended)
+#   golduck codex  [args...]                # explicit: route to cxr (Codex)
+#   golduck droid  [args...]                # explicit: route to droidx (Factory)
+#   golduck up | down | status | doctor     # lifecycle / health
+#   golduck trace [--follow]                # live tracer
+#   golduck skill run <name> [args...]      # user skills
+#   golduck memory (get|set|list|search)    # shared memory
+#   golduck verify "<question>" "<answer>"  # one-shot verifier
+#   golduck plan "<goal>"                   # decompose-only (no exec)
+#   golduck eval                            # golden-set regression eval
+#   golduck ask  "<question>"               # one-shot agent-loop
+#   golduck dag  <name|path>                # run a DAG (see runtime/dags/)
+#   golduck daemon (start|stop|reload)      # orchestrator lifecycle
+#   golduck self-test                       # E2E smoke against live proxy
+#   golduck version                         # print version/commit
+#
+# ENV
+#   GOLDUCK_MODE=auto|codex|droid           default auto
+#   GOLDUCK_MODEL=<slug>                    override model tier selection
+#   GOLDUCK_VERIFY=on|off|auto              default auto (on for complex)
+#   GOLDUCK_REFLECT=on|off|auto             default auto (depth >=2)
+#   GOLDUCK_PERSONA=reviewer,adversary,...  override coordinator panel
+#   GOLDUCK_BUDGET_USD=<n>                  per-session cost ceiling (default unlimited; set GOLDUCK_ENFORCE_BUDGET=1 to enforce)
+#   GOLDUCK_TRACE=1                         verbose live tracer
+#   GOLDUCK_HOME                            defaults to ~/.golduck
+#
+# Everything in golduck is idempotent and autonomous: if a service is up, it
+# is reused; if not, it is started. First-prompt latency is a few seconds.
+# Subsequent prompts reuse hot proxies and return instantly.
+# ============================================================================
+set -eu
+
+# ── resolve GOLDUCK_ROOT (this script's repo) ──────────────────────────────
+SOURCE="${BASH_SOURCE[0]}"
+while [ -L "$SOURCE" ]; do
+  DIR="$(cd "$(dirname "$SOURCE")" && pwd)"
+  SOURCE="$(readlink "$SOURCE")"
+  [[ "$SOURCE" != /* ]] && SOURCE="$DIR/$SOURCE"
+done
+GOLDUCK_BIN="$(cd "$(dirname "$SOURCE")" && pwd)"
+GOLDUCK_ROOT="$(cd "$GOLDUCK_BIN/.." && pwd)"
+REPO_ROOT="$(cd "$GOLDUCK_ROOT/.." && pwd)"
+export GOLDUCK_ROOT REPO_ROOT
+
+# ── paths ─────────────────────────────────────────────────────────────────
+export GOLDUCK_HOME="${GOLDUCK_HOME:-$HOME/.golduck}"
+mkdir -p "$GOLDUCK_HOME"/{logs,state,memory,traces,skills,hooks,dags,trust,tmp}
+
+# ── AWS creds auto-pickup ────────────────────────────────────────────────
+# If the user hasn't set AWS_PROFILE but ~/.aws/credentials has a single
+# (or first) profile, pick it so the Bedrock proxy can authenticate without
+# extra ceremony. Also set AWS_REGION if missing.
+if [ -z "${AWS_PROFILE:-}" ] && [ -r "$HOME/.aws/credentials" ]; then
+  first_profile=$(awk -F'[][]' '/^\[.+\]/ { print $2; exit }' "$HOME/.aws/credentials" 2>/dev/null || true)
+  if [ -n "$first_profile" ]; then
+    export AWS_PROFILE="$first_profile"
+  fi
+fi
+export AWS_REGION="${AWS_REGION:-us-east-1}"
+
+export GOLDUCK_DAEMON_PORT="${GOLDUCK_DAEMON_PORT:-8787}"
+export GOLDUCK_DAEMON_PID_FILE="$GOLDUCK_HOME/state/daemon.pid"
+export GOLDUCK_DAEMON_LOG_FILE="$GOLDUCK_HOME/logs/daemon.log"
+export GOLDUCK_DAEMON_SOCK="$GOLDUCK_HOME/state/daemon.sock"
+export GOLDUCK_TRACE_FILE="$GOLDUCK_HOME/traces/current.jsonl"
+
+# version stamp
+GOLDUCK_VERSION="0.1.0"
+if [ -d "$REPO_ROOT/.git" ]; then
+  GOLDUCK_COMMIT="$(git -C "$REPO_ROOT" rev-parse --short HEAD 2>/dev/null || echo unknown)"
+else
+  GOLDUCK_COMMIT="unknown"
+fi
+export GOLDUCK_VERSION GOLDUCK_COMMIT
+
+# ── colors ────────────────────────────────────────────────────────────────
+if [ -t 1 ]; then
+  BOLD=$'\033[1m'; DIM=$'\033[2m'; RED=$'\033[31m'; GRN=$'\033[32m'
+  YLW=$'\033[33m'; BLU=$'\033[34m'; MAG=$'\033[35m'; CYN=$'\033[36m'; RST=$'\033[0m'
+else
+  BOLD=""; DIM=""; RED=""; GRN=""; YLW=""; BLU=""; MAG=""; CYN=""; RST=""
+fi
+_tag() { printf "%s[golduck]%s " "$MAG" "$RST"; }
+say()  { _tag; printf "%s\n" "$*"; }
+ok()   { _tag; printf "%s✓%s %s\n" "$GRN" "$RST" "$*"; }
+warn() { _tag; printf "%s⚠ %s%s\n" "$YLW" "$*" "$RST"; }
+die()  { _tag; printf "%sERROR:%s %s\n" "$RED" "$RST" "$*" >&2; exit 1; }
+kv()   { printf "  %-22s %s\n" "$1" "$2"; }
+
+# ── boot: find node / python ──────────────────────────────────────────────
+NODE_BIN="${NODE_BIN:-$(command -v node || true)}"
+PY_BIN="${PY_BIN:-$(command -v python3 || command -v python || true)}"
+if [ -z "$NODE_BIN" ]; then die "node not found (required). Install Node >=20."; fi
+if [ -z "$PY_BIN" ];   then die "python3 not found (required)."; fi
+export NODE_BIN PY_BIN
+
+# ── resolve dependencies (cxr binary, droidx, proxies) ────────────────────
+CXR_BIN="${CXR_BIN:-$REPO_ROOT/cxr}"
+DROIDX_BIN="${DROIDX_BIN:-$REPO_ROOT/droid-reverse-engineered/droidx}"
+CXR_PROXY_DIR="$REPO_ROOT/anthropic-proxy"
+DROIDX_PROXY_DIR="$REPO_ROOT/droid-reverse-engineered/droidx-runtime/proxy"
+DROIDX_RLM_DIR="$REPO_ROOT/droid-reverse-engineered/droidx-runtime/rlm"
+OBSCURA_MCP_HOME="${OBSCURA_MCP_HOME:-$HOME/cxr-obscura}"
+
+# Expose paths to child processes (runtime scripts read these)
+export CXR_BIN DROIDX_BIN CXR_PROXY_DIR DROIDX_PROXY_DIR DROIDX_RLM_DIR
+export OBSCURA_MCP_HOME
+
+# ── dispatch subcommands ──────────────────────────────────────────────────
+SUBCMD="${1:-}"
+
+_run_node() {
+  "$NODE_BIN" "$@"
+}
+_run_py() {
+  "$PY_BIN" "$@"
+}
+
+# Route by subcommand. The "smart" default (no subcommand) is `run`.
+case "$SUBCMD" in
+  "")        if [ -t 1 ] && [ -t 0 ]; then exec "$GOLDUCK_BIN/golduck-tui"; else exec "$GOLDUCK_BIN/golduck-run"; fi ;;
+  help|-h|--help) exec "$GOLDUCK_BIN/golduck-help" ;;
+  version|--version) echo "golduck $GOLDUCK_VERSION ($GOLDUCK_COMMIT)"; exit 0 ;;
+  up)        shift; exec "$GOLDUCK_BIN/golduck-up"        "$@" ;;
+  down)      shift; exec "$GOLDUCK_BIN/golduck-down"      "$@" ;;
+  status)    shift; exec "$GOLDUCK_BIN/golduck-status"    "$@" ;;
+  doctor)    shift; exec "$GOLDUCK_BIN/golduck-doctor"    "$@" ;;
+  trace)     shift; exec "$GOLDUCK_BIN/golduck-trace"     "$@" ;;
+  run)       shift; exec "$GOLDUCK_BIN/golduck-run"       "$@" ;;
+  tui)       shift; exec "$GOLDUCK_BIN/golduck-tui"       "$@" ;;
+  ask)       shift; exec "$GOLDUCK_BIN/golduck-ask"       "$@" ;;
+  plan)      shift; exec "$GOLDUCK_BIN/golduck-plan"      "$@" ;;
+  verify)    shift; exec "$GOLDUCK_BIN/golduck-verify"    "$@" ;;
+  dag)       shift; exec "$GOLDUCK_BIN/golduck-dag"       "$@" ;;
+  skill)     shift; exec "$GOLDUCK_BIN/golduck-skill"     "$@" ;;
+  memory)    shift; exec "$GOLDUCK_BIN/golduck-memory"    "$@" ;;
+  daemon)    shift; exec "$GOLDUCK_BIN/golduck-daemon"    "$@" ;;
+  hooks)     shift; exec "$GOLDUCK_BIN/golduck-hooks"     "$@" ;;
+  self-test) shift; exec "$GOLDUCK_BIN/golduck-selftest"  "$@" ;;
+  test)      shift; exec "$GOLDUCK_BIN/golduck-test"      "$@" ;;
+  stats)     shift; exec "$GOLDUCK_BIN/golduck-stats"     "$@" ;;
+  eval)      shift; exec "$GOLDUCK_BIN/golduck-eval"      "$@" ;;
+  sessions)  shift; exec "$GOLDUCK_BIN/golduck-sessions"  "$@" ;;
+  *)
+    die "unknown subcommand: $SUBCMD (try: golduck help)"
+    ;;
+esac

@@ -1,0 +1,25 @@
+{
+  "name": "repo-brief",
+  "description": "Cheap three-step repo brief: discover → summarize → flag risks.",
+  "nodes": [
+    {
+      "id": "discover",
+      "title": "discover repo shape",
+      "tool": "rlm_query",
+      "args": {
+        "context": "You analyze codebases. The caller will pipe in a file tree and README via the next step.",
+        "query": "Describe what kind of system this looks like and what the 3 most important files probably are. Be specific."
+      }
+    },
+    {
+      "id": "risk_flag",
+      "title": "flag risk surfaces",
+      "tool": "rlm_query",
+      "deps": ["discover"],
+      "args": {
+        "context": "@discover",
+        "query": "Given this system, list the top 3 security / reliability risks by likelihood. For each: one sentence + one concrete mitigation."
+      }
+    }
+  ]
+}

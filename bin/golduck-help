@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+# Env vars worth knowing (wave-20 additions marked *):
+#   GOLDUCK_HOME              state + traces + memory root (default ~/.golduck)
+#   GOLDUCK_MODEL             override main model
+#   GOLDUCK_VERIFY            auto|on|off
+#   GOLDUCK_REFLECT           auto|shallow|deep|off
+#   GOLDUCK_BUDGET_USD        soft budget (default Infinity)
+#   GOLDUCK_SAFETY_BUDGET_USD * per-run hard cap (default $10)
+#   GOLDUCK_MAX_AUTO_REVISIONS * max revise→rerun rounds (default 2)
+#   GOLDUCK_RLM_BUDGET_USD    * per-process sub-agent cap (default $5)
+#   GOLDUCK_MAX_TOKENS_HARD   * per-call token ceiling (default 128000)
+#   GOLDUCK_MAP_CONCURRENCY   rlm_map concurrency (default 4)
+#   GOLDUCK_PANEL_THINK       panel-verify per-persona think budget
+#   GOLDUCK_COMPACT_THINK     compaction think budget (0 disables)
+#   GOLDUCK_BON_TEMPERATURE_SPREAD  best-of-N temperatures (comma list)
+#   GOLDUCK_JOURNAL_MAX_LINES rotation threshold (default 5000)
+#   GOLDUCK_SESSION_KEEP      session file retention (default 50)
+#   GOLDUCK_MCP_TOOL_TIMEOUT_MS  MCP call timeout (default 60000)
+#   GOLDUCK_TURN_SHARED       'off' to fall back to per-engine dispatch code path
+#   GOLDUCK_TRACE             '1' to force verbose tracer
+cat <<'HELP'
+golduck — unified autonomous agentic framework
+
+COMMANDS
+  golduck run [options] [-- prompt...]   Autonomous run (default).
+  golduck tui                            Interactive full-TUI (ink-based, default in TTY).
+  golduck ask "<question>"               One-shot ask (agent-loop pipeline).
+  golduck plan "<goal>"                  Produce a decomposition plan only.
+  golduck verify "<q>" "<a>"             Verify an answer (panel critic).
+  golduck dag <name|path>                Run a DAG file.
+  golduck skill run <name> [-k=v...]     Invoke a registered skill.
+  golduck skill list                     List available skills.
+  golduck memory list|search|get|set     Shared memory layer.
+
+  golduck up                             Start all services (proxy, MCP, daemon).
+  golduck down                           Stop all golduck-managed services.
+  golduck status                         Show daemon + proxy + MCP health.
+  golduck doctor                         Self-diagnose + env probe.
+  golduck trace [--follow]               Tail the structured trace.
+  golduck daemon start|stop|reload       Low-level daemon lifecycle.
+  golduck hooks list|run <event> <json>  Hook manager.
+  golduck self-test                      E2E smoke against live Bedrock.
+  golduck test                           Fast unit tests (no network).
+  golduck stats                          Aggregate tokens/spend across runs.
+  golduck sessions list|show <id>        Persistent session management.
+  golduck version                        Print version and commit.
+
+OPTIONS (for `run`)
+      --model <slug>                     Override model tier.
+      --verify on|off|auto               Default auto.
+      --reflect on|off|auto              Default auto.
+      --persona <list>                   e.g. reviewer,adversary,planner
+      --budget <usd>                     Hard per-run cost ceiling.
+      --fast                             Skip verify + reflect + trace.
+      --trace                            Force verbose tracer on.
+      --dry-run                          Show route decision without executing.
+
+ENV
+  GOLDUCK_HOME=~/.golduck   Where state/logs/memory/traces live.
+  GOLDUCK_MODE=auto         Frontend choice.
+  GOLDUCK_MODEL=            Override model tier.
+  GOLDUCK_VERIFY=auto       Auto = on for complex prompts only.
+  GOLDUCK_REFLECT=auto      Auto = on when planner depth >=2.
+  GOLDUCK_BUDGET_USD=5      Per-run ceiling.
+
+For deep guidance: cat \$GOLDUCK_ROOT/README.md
+HELP

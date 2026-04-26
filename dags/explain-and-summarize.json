@@ -1,0 +1,35 @@
+{
+  "name": "explain-and-summarize",
+  "description": "Given a topic, produce a deep explanation, then summarize it, then critique the summary. Exercises chained rlm_query + rlm_verify.",
+  "nodes": [
+    {
+      "id": "explain",
+      "title": "deep explanation",
+      "tool": "rlm_query",
+      "args": {
+        "context": "You are producing a technical deep-dive.",
+        "query": "Give a 6-paragraph technical explanation of how multi-head attention enables parallel sequence processing. Include complexity and a toy example."
+      }
+    },
+    {
+      "id": "summarize",
+      "title": "one-paragraph summary",
+      "tool": "rlm_query",
+      "deps": ["explain"],
+      "args": {
+        "context": "@explain",
+        "query": "Produce a one-paragraph summary (<=120 words) that preserves every technical detail required for a reader who will not read the original. No hedging."
+      }
+    },
+    {
+      "id": "verify",
+      "title": "verify summary against original",
+      "tool": "rlm_verify",
+      "deps": ["explain", "summarize"],
+      "args": {
+        "question": "Does this summary preserve every technical detail of the original explanation?",
+        "answer": "@summarize"
+      }
+    }
+  ]
+}

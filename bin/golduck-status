@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -eu
+HERE="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=/dev/null
+. "$HERE/_common.sh"
+"$NODE_BIN" "$GOLDUCK_ROOT/runtime/daemon/boot.mjs" status

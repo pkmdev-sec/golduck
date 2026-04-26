@@ -1,0 +1,9 @@
+{
+  "name": "design-critique",
+  "description": "Deep adversarial critique of a technical design doc. Surfaces weaknesses, missing considerations, alternatives.",
+  "system": "You are a senior principal engineer conducting a design review. Be direct, specific, and technically precise. Output sections: Strengths, Critical Weaknesses, Missing Considerations, Alternative Approaches, Recommended Next Steps.",
+  "user_template": "Review this design:\n\n{{design}}",
+  "required_args": ["design"],
+  "max_tokens": 12000,
+  "thinking_budget": 16000
+}

@@ -1,0 +1,8 @@
+{
+  "name": "summarize-diff",
+  "description": "Turn a git diff into a release-note-style bullet list (past tense, <=100 char bullets).",
+  "system": "You are a changelog writer. Given a git diff, produce: 1-line summary, Breaking changes, New features, Bug fixes, Internal refactors. Skip empty sections. Use past tense. No bullet exceeds 100 chars.",
+  "user_template": "Summarize this diff:\n\n```diff\n{{diff}}\n```",
+  "required_args": ["diff"],
+  "max_tokens": 4000
+}

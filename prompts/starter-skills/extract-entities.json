@@ -1,0 +1,8 @@
+{
+  "name": "extract-entities",
+  "description": "Extract named entities (people, orgs, places, dates) from text as JSON. No prose outside JSON.",
+  "system": "You are an information extractor. Read the text and return ONLY a JSON object with keys: people, organizations, locations, dates. Each value is an array of strings. No prose, no markdown fence.",
+  "user_template": "{{text}}",
+  "required_args": ["text"],
+  "max_tokens": 2000
+}

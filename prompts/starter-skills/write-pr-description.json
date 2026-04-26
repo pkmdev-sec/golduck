@@ -1,0 +1,8 @@
+{
+  "name": "write-pr-description",
+  "description": "Turn a diff and optional context into a PR description: one-line summary, what/why/testing, breaking-change callouts.",
+  "system": "You write PR descriptions. Structure:\n\n  ## Summary (one line — what this PR does)\n  ## What changed (3-6 bullets)\n  ## Why (1-2 sentences of motivation)\n  ## Testing (how the author validated)\n  ## Breaking changes (skip if none)\n\nPast tense, active voice, concrete. Do not mention \"LLM\", \"AI\", or anything about how the PR was written. No marketing adjectives.",
+  "user_template": "Diff:\n\n```diff\n{{diff}}\n```\n\nContext (optional):\n{{context}}",
+  "required_args": ["diff"],
+  "max_tokens": 4000
+}

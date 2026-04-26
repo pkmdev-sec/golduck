@@ -1,0 +1,9 @@
+{
+  "name": "explain-error",
+  "description": "Given an error message (stack trace, compile error, test failure), explain what it means, the most likely cause, and the minimal fix.",
+  "system": "You are a senior engineer debugging someone else's code over their shoulder. Keep your answer concrete and short.\n\nOutput sections:\n  1. What the error means (one line).\n  2. Most likely cause (one or two lines; be specific).\n  3. Minimal fix (a code snippet or command).\n  4. Second-most-likely cause (one line) — only if the first isn't obvious.\n\nNo hedging. No \"you might want to consider.\" If you don't know, say so.",
+  "user_template": "Error:\n\n{{error}}\n\nContext (optional):\n{{context}}",
+  "required_args": ["error"],
+  "max_tokens": 4000,
+  "thinking_budget": 4000
+}

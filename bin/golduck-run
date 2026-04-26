@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -eu
+HERE="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=/dev/null
+. "$HERE/_common.sh"
+
+# Ensure services are up (idempotent, fast path if already healthy).
+"$NODE_BIN" "$GOLDUCK_ROOT/runtime/daemon/boot.mjs" up >/dev/null
+
+# Orchestrator: picks mode, model, verify, reflect, budget, then execs
+# the right frontend (cxr or droidx) with the right system prompt bundle.
+exec "$NODE_BIN" "$GOLDUCK_ROOT/runtime/core/orchestrate.mjs" "$@"
